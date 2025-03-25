@@ -1,3 +1,7 @@
 [gd_scene format=3 uid="uid://d2fufbqldvv8n"]
 
 [node name="Generador" type="Node2D"]
+
+[node name="TileMapLayer" type="TileMapLayer" parent="."]
+
+[node name="Camera2D" type="Camera2D" parent="."]
