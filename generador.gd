@@ -12,12 +12,21 @@ var pivote: = []
 @export var alto: int = 35
 enum {vacio, lleno, vacio_procesar, lleno_procesar}
 
+#Llenado inicial
+@export var densidad: int = 50
+
+#Dado aleatorio
+var dado: RandomNumberGenerator = RandomNumberGenerator.new()
+@export var usar_semilla: bool = true
+@export var semilla: String = "Roi Eshuk"
+
 func _process(delta: float) -> void:
 	mover_camara(delta)
 
 func _ready() -> void:
 	formar_matriz(cueva, ancho, alto, 0)
 	formar_matriz(pivote, ancho, alto, 0)
+	llenar_cueva()
 	dibujar_cueva()
 
 func mover_camara(delta: float) -> void:
@@ -41,3 +50,26 @@ func dibujar_cueva(matriz: = cueva, esquina_x: int = 0, esquina_y: int = 0) -> v
 		for x in range(ancho):
 			for y in range(alto):
 				mapa.set_cell(Vector2i(esquina_x + x, esquina_y + y), 0, Vector2i(matriz[x][y], 0))
+
+func llenar_cueva(matriz: Array = cueva) -> void:
+	
+	tirar_dado()
+	
+	var vaciar: int = 0
+	for x in range(ancho):
+		for y in range(alto):
+			matriz[x][y] = 0
+			if x == 0 or y == 0 or x == ancho - 1 or y == alto - 1:
+				matriz[x][y] = lleno
+			else:
+				vaciar = dado.randi_range(0, 100)
+				matriz[x][y] = vacio if vaciar > densidad else lleno
+
+func tirar_dado() -> void:
+	if usar_semilla:
+		if semilla.is_valid_int():
+			dado.seed = semilla.to_int()
+		else:
+			dado.seed = hash(semilla)
+	else:
+		dado.randomize()
