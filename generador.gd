@@ -42,6 +42,13 @@ var cavidades:int = 0
 var area: = []
 var area_temporal: = []
 
+#Caminos
+var caminos: = []
+var senda: = []
+var senda_revisada: = []
+var celda_revisar: Vector2i = Vector2i.ZERO
+var distancia:int = 1
+
 #endregion - Variables
 
 #region - funciones de interacción
@@ -106,6 +113,15 @@ func generar_cueva() -> void:
 		quitar_artefactos(vacio, vacio_procesar, lleno, umbral_rellenar, false, cavidades)
 		llena_area(0, 0, lleno_procesar, lleno)
 	
+	await esperar_teclado("Conectar cuevas.")
+	conectar_cuevas()
+
+	await esperar_teclado("Torcer caminos.")
+	torcer_caminos()
+
+	await esperar_teclado("Limpieza final.")
+	limpieza_final()
+	
 	dibujar_cueva(cueva)
 	
 	await esperar_teclado("¡Cueva terminada! Preseiona ENTER para empezar de nuevo.")
@@ -118,6 +134,10 @@ func generar_cueva() -> void:
 func reestablecer_variables() -> void:
 	formar_matriz(cueva, ancho, alto, 0)
 	formar_matriz(pivote, ancho, alto, 0)
+	area.clear()
+	area_temporal.clear()
+	distancia = 1
+	caminos.clear()
 	if OS.is_debug_build() and modo_revision:
 		print("Variables reestablecidas.")
 
@@ -153,6 +173,121 @@ func alisar_cueva() -> void:
 				pivote[x][y] = vacio
 				
 	copiar_matriz(pivote, cueva)
+
+func conectar_cuevas() -> void:
+
+	var buscando:bool = true
+	senda.clear()
+	distancia = 1
+
+	for x in range(ancho):
+		for y in range(alto):
+			pivote[x][y] = 0
+
+	contar_cavidades()
+
+	if cavidades > 1:
+
+		var conexiones:int = cavidades - 1
+
+		#Poner distancia en primera cueva
+		for x in range(ancho):
+			if !buscando:
+				break
+			for y in range(alto):
+				if buscando and cueva[x][y] == vacio:
+					llena_area(x, y, vacio, vacio_procesar)
+					buscando = false
+					break
+
+		area_conectada()
+
+		while conexiones > 0 and senda.size() > 0:
+			celda_revisar = senda.pop_front()
+			distancia = pivote[celda_revisar.x][celda_revisar.y] + 1
+			
+			if celda_revisar.x > 1 and cueva[celda_revisar.x - 1][celda_revisar.y] == lleno and pivote[celda_revisar.x - 1][celda_revisar.y] == vacio:
+				senda.append(Vector2i(celda_revisar.x - 1, celda_revisar.y))
+				pivote[celda_revisar.x-1][celda_revisar.y] = distancia
+
+			if celda_revisar.x < ancho - 2 and cueva[celda_revisar.x + 1][celda_revisar.y] == lleno and pivote[celda_revisar.x + 1][celda_revisar.y] == vacio:
+				senda.append(Vector2i(celda_revisar.x + 1, celda_revisar.y))
+				pivote[celda_revisar.x + 1][celda_revisar.y] = distancia
+			
+			if celda_revisar.y > 1 and cueva[celda_revisar.x][celda_revisar.y - 1] == lleno and pivote[celda_revisar.x][celda_revisar.y - 1] == vacio:
+				senda.append(Vector2i(celda_revisar.x,celda_revisar.y-1))
+				pivote[celda_revisar.x][celda_revisar.y-1] = distancia
+			
+			if celda_revisar.y < alto - 2 and cueva[celda_revisar.x][celda_revisar.y + 1] == lleno and pivote[celda_revisar.x][celda_revisar.y + 1] == vacio:
+				senda.append(Vector2i(celda_revisar.x,celda_revisar.y + 1))
+				pivote[celda_revisar.x][celda_revisar.y + 1] = distancia
+			
+			if celda_revisar.x > 1 and cueva[celda_revisar.x - 1][celda_revisar.y] == vacio:
+				llena_area(celda_revisar.x - 1, celda_revisar.y, vacio, vacio_procesar)
+				area_conectada(distancia)
+				ubicar_conexiones(celda_revisar.x-1, celda_revisar.y)
+				conexiones -= 1
+			
+			if celda_revisar.x < ancho - 2 and cueva[celda_revisar.x + 1][celda_revisar.y] == vacio:
+				llena_area(celda_revisar.x + 1, celda_revisar.y, vacio, vacio_procesar)
+				area_conectada(distancia)
+				ubicar_conexiones(celda_revisar.x+1, celda_revisar.y)
+				conexiones -= 1
+			
+			if celda_revisar.y > 1 and cueva[celda_revisar.x][celda_revisar.y - 1] == vacio:
+				llena_area(celda_revisar.x, celda_revisar.y - 1, vacio, vacio_procesar)
+				area_conectada(distancia)
+				ubicar_conexiones(celda_revisar.x, celda_revisar.y-1)
+				conexiones -= 1
+			
+			if celda_revisar.y < alto - 2 and cueva[celda_revisar.x][celda_revisar.y + 1] == vacio:
+				llena_area(celda_revisar.x, celda_revisar.y + 1, vacio, vacio_procesar)
+				area_conectada(distancia)
+				ubicar_conexiones(celda_revisar.x, celda_revisar.y+1)
+				conexiones -= 1
+	
+		trazar_caminos()
+
+func torcer_caminos() -> void:
+	var dir:int = 1
+	for x in range(2, ancho - 2):
+		for y in range(2, alto - 2):
+			var vecinos:int = 0
+			var vecinos_v:int = 0
+			var vecinos_h:int = 0
+			if cueva[x][y] == vacio:
+				for vx in range(-1,2):
+					for vy in range(-1,2):
+						if vx != 0 or vy != 0:
+							if cueva[x+vx][y+vy] == vacio:
+								vecinos += 1
+								if vx == 0:
+									vecinos_v +=1
+								if vy == 0:
+									vecinos_h +=1
+			if vecinos == 2 and vecinos_h == 2:
+				dir *= -1
+				cueva[x][y] = lleno
+				cueva[x][y + dir] = vacio
+			if vecinos == 2 and vecinos_v == 2:
+				dir *= -1
+				cueva[x][y] = lleno
+				cueva[x + dir][y] = vacio
+
+func limpieza_final() -> void:
+	
+	for x in range(ancho):
+		for y in range(alto):
+			if cueva[x][y] == lleno_procesar:
+				cueva[x][y] = lleno
+			if cueva[x][y] == vacio_procesar:
+				cueva[x][y] = vacio
+				
+	llena_area(0, 0, lleno, lleno_procesar)
+	quitar_artefactos(lleno, lleno_procesar, vacio, umbral_derribar, true)
+	llena_area(0, 0, lleno_procesar, lleno)
+	unir_esquinas()
+
 
 #endregion - Funciones de proceso
 
@@ -245,5 +380,112 @@ func llena_area(x_ini: int, y_ini: int, buscar: int, convertir: int, matriz: = c
 			area_temporal.append(Vector2i(x,y-1))
 			area.append(Vector2i(x,y-1))
 
+func area_conectada(distancia_recorrida: int = 1) -> void:
+	
+	for dato: Vector2i in area:
+		senda.append(dato)
+			
+	for celda: Vector2i in area:
+		if celda.x > 0 and celda.x < ancho - 1 and celda.y > 0 and celda.y < alto - 1:
+			if (cueva[celda.x + 1][celda.y] == lleno or 
+				cueva[celda.x - 1][celda.y] == lleno or
+				cueva[celda.x][celda.y + 1] == lleno or
+				cueva[celda.x][celda.y - 1] == lleno):
+					pivote[celda.x][celda.y] = distancia_recorrida
+
+func ubicar_conexiones(x:int, y:int) -> void:
+	
+	var minimo:int = pivote[x][y]
+	var x_original: int = x
+	var y_original: int = y
+	var dir_x: int = 0
+	var dir_y: int = 0
+	var dar_paso: bool = true
+	
+	while dar_paso:
+		dir_x = 0
+		dir_y = 0
+		dar_paso = false
+		if x > 1 and pivote[x-1][y] < minimo and pivote[x-1][y] > 0 and (cueva[x-1][y] == lleno or pivote[x-1][y] == 1):
+			dir_x = -1
+			dir_y = 0
+			minimo = pivote[x + dir_x][y + dir_y]
+			dar_paso = true
+		if x < ancho - 2 and pivote[x+1][y] < minimo and pivote[x+1][y] > 0 and (cueva[x+1][y] == lleno or pivote[x+1][y] == 1):
+			dir_x = 1
+			dir_y = 0
+			minimo = pivote[x + dir_x][y + dir_y]
+			dar_paso = true
+		if y > 1 and pivote[x][y-1] < minimo and pivote[x][y-1] > 0 and (cueva[x][y-1] == lleno or pivote[x][y-1] == 1):
+			dir_x = 0
+			dir_y = -1
+			minimo = pivote[x + dir_x][y + dir_y]
+			dar_paso = true
+		if y < alto - 2 and pivote[x][y+1] < minimo and pivote[x][y+1] > 0 and (cueva[x][y+1] == lleno or pivote[x][y+1] == 1):
+			dir_x = 0
+			dir_y = 1
+			minimo = pivote[x+dir_x][y+dir_y]
+			dar_paso = true
+		x += dir_x
+		y += dir_y
+	caminos.append(Vector4i(x_original, y_original, x, y))
+	
+func trazar_caminos() -> void:
+	
+	for camino:Vector4i in caminos:
+		var x1: int = 0
+		var x2: int = 0
+		var y1: int = 0
+		var y2: int = 0
+		
+		if camino.x < camino.z:
+			x1 = camino.x
+			x2 = camino.z
+			y1 = camino.y
+			y2 = camino.w
+		else:
+			x1 = camino.z
+			x2 = camino.x
+			y1 = camino.w
+			y2 = camino.y
+		
+		var dx:int = x2 - x1
+		var dy:int = y2 - y1
+		
+		if dx == 0:
+			for p in range(min(y1,y2), max(y1,y2)+1):
+				cueva[x1][p] = vacio
+		elif dy == 0:
+			for p in range(x1, x2 + 1):
+				cueva[p][y1] = vacio
+		else:
+			if abs(dx) >= abs(dy):
+				for p in range(x1,x2+1):
+					var px: int = p
+					var py: int = round(y1 + (p-x1)*(dy)/(dx))
+					cueva[px][py] = vacio
+			else:
+				for p in range(y1,y2+sign(dy), sign(dy)):
+					var py: int = p
+					var px: int = round(x1 + (p-y1)*(dx)/(dy))
+					cueva[px][py] = vacio
+
+func unir_esquinas() -> void:
+	var unir: bool = true
+	while unir:
+		unir = false
+		for x in range(1, ancho-2):
+			for y in range(1,alto-2):
+				var a: int = cueva[x][y]
+				var b: int = cueva[x+1][y]
+				var c: int = cueva[x][y+1]
+				var d: int = cueva[x+1][y+1]
+				var ajuste: int = randi_range(0,1)
+				if a + d == 2 and b + c == 0:
+					unir = true
+					cueva[x + ajuste][y + ajuste] = vacio
+				elif a + d == 0 and b + c == 2:
+					unir = true
+					cueva[x + 1 - ajuste][y + ajuste] = vacio
 
 #endregion - Funciones subordinadas y de apoyo
