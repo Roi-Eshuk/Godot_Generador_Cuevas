@@ -15,6 +15,8 @@ sources/0 = SubResource("TileSetAtlasSource_82gn5")
 
 [node name="Generador" type="Node2D"]
 script = ExtResource("1_rv8or")
+modo_revision = false
+usar_semilla = false
 
 [node name="TileMapLayer" type="TileMapLayer" parent="."]
 tile_set = SubResource("TileSet_hdt51")

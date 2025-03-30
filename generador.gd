@@ -62,6 +62,8 @@ func generar_cueva() -> void:
 	await esperar_teclado("Llenar cueva.")
 	llenar_cueva(cueva)
 	
+	dibujar_cueva(cueva)
+	
 	await esperar_teclado("¡Cueva terminada! Preseiona ENTER para empezar de nuevo.")
 	corriendo_revision = false
 
