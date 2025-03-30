@@ -81,6 +81,10 @@ func generar_cueva() -> void:
 	await esperar_teclado("Llenar cueva.")
 	llenar_cueva(cueva)
 	
+	for a in cantidad_alisado:
+		await esperar_teclado("Alisar cueva: " + str(a + 1))
+		alisar_cueva()
+	
 	dibujar_cueva(cueva)
 	
 	await esperar_teclado("¡Cueva terminada! Preseiona ENTER para empezar de nuevo.")
@@ -110,6 +114,25 @@ func llenar_cueva(matriz: Array = cueva) -> void:
 				vaciar = dado.randi_range(0, 100)
 				matriz[x][y] = vacio if vaciar > densidad else lleno
 
+func alisar_cueva() -> void:
+	copiar_matriz(cueva, pivote)
+	var ocupadas: int = 0
+	for x in range(1,ancho-1):
+		for y in range(1,alto-1):
+			ocupadas = 0
+			for vx in range(x-1,x+2):
+				for vy in range(y-1,y+2):
+					if vx != x or vy != y:
+						ocupadas += cueva[vx][vy]
+			
+			if pivote[x][y] == vacio and ocupadas > umbral_ocupar:
+				pivote[x][y] = lleno
+				
+			if pivote[x][y] == lleno and ocupadas < umbral_vaciar:
+				pivote[x][y] = vacio
+				
+	copiar_matriz(pivote, cueva)
+
 #endregion - Funciones de proceso
 
 #region - Funciones subordinadas y de apoyo
@@ -135,7 +158,16 @@ func tirar_dado() -> void:
 			dado.seed = semilla.to_int()
 		else:
 			dado.seed = hash(semilla)
+		if OS.is_debug_build() and modo_revision:
+			print("Semilla:", semilla)
 	else:
 		dado.randomize()
+		if OS.is_debug_build() and modo_revision:
+			print("Semilla:", dado.seed)
+
+func copiar_matriz(origen: = cueva, destino: = pivote) -> void:
+	for x in range(ancho):
+		for y in range(alto):
+			destino[x][y] = origen[x][y]
 
 #endregion - Funciones subordinadas y de apoyo
