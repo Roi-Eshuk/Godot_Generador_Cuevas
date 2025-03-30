@@ -118,6 +118,8 @@ func generar_cueva() -> void:
 func reestablecer_variables() -> void:
 	formar_matriz(cueva, ancho, alto, 0)
 	formar_matriz(pivote, ancho, alto, 0)
+	area.clear()
+	area_temporal.clear()
 	if OS.is_debug_build() and modo_revision:
 		print("Variables reestablecidas.")
 
