@@ -1,5 +1,9 @@
 extends Node2D
 
+#Modo revisión
+@export var modo_revision: bool = true
+var corriendo_revision: bool = false
+
 #Cámara
 @onready var camara: Camera2D = $Camera2D
 @export var velocidad_camara: int = 350
@@ -24,10 +28,10 @@ func _process(delta: float) -> void:
 	mover_camara(delta)
 
 func _ready() -> void:
-	formar_matriz(cueva, ancho, alto, 0)
-	formar_matriz(pivote, ancho, alto, 0)
-	llenar_cueva()
-	dibujar_cueva()
+	if not modo_revision:
+		generar_cueva()
+	else:
+		print("Corriendo en modo de revisión. Presiona ENTER para iniciar.")
 
 func mover_camara(delta: float) -> void:
 	var dir_camara = Vector2.ZERO
@@ -35,6 +39,37 @@ func mover_camara(delta: float) -> void:
 	dir_camara.y = int(Input.is_action_pressed("ui_down")) - int(Input.is_action_pressed("ui_up"))
 	if dir_camara != Vector2.ZERO:
 		camara.position += dir_camara * velocidad_camara * delta
+
+func _input(event) -> void:
+	if OS.is_debug_build() and event.is_action_pressed("ui_accept") and not corriendo_revision:
+		corriendo_revision = true
+		generar_cueva()
+
+func esperar_teclado(mensaje: String = "Siguiente paso.") -> void:
+	if OS.is_debug_build() and modo_revision and corriendo_revision:
+		dibujar_cueva(cueva)
+		print("SIGUIENTE PASO: " + mensaje)
+		while true:
+			await get_tree().process_frame
+			if Input.is_action_just_pressed("ui_siguiente"):
+				break
+
+func generar_cueva() -> void:
+
+	await esperar_teclado("Reestablecer variables.")
+	reestablecer_variables()
+
+	await esperar_teclado("Llenar cueva.")
+	llenar_cueva(cueva)
+	
+	await esperar_teclado("¡Cueva terminada! Preseiona ENTER para empezar de nuevo.")
+	corriendo_revision = false
+
+func reestablecer_variables() -> void:
+	formar_matriz(cueva, ancho, alto, 0)
+	formar_matriz(pivote, ancho, alto, 0)
+	if OS.is_debug_build() and modo_revision:
+		print("Variables reestablecidas.")
 
 func formar_matriz(matriz: Array, filas: int = ancho, columnas: int = alto, valor: int = 0) -> Array:
 	matriz.clear()
