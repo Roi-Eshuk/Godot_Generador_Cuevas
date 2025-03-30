@@ -31,6 +31,17 @@ var dado: RandomNumberGenerator = RandomNumberGenerator.new()
 @export var umbral_ocupar: int = 4
 @export var umbral_vaciar: int = 4
 
+#Quitar artefactos
+@export var umbral_derribar: int = 10
+@export var umbral_rellenar: int = 10
+
+#Contar cavidades
+var cavidades:int = 0
+
+#Llenar área
+var area: = []
+var area_temporal: = []
+
 #endregion - Variables
 
 #region - funciones de interacción
@@ -84,6 +95,16 @@ func generar_cueva() -> void:
 	for a in cantidad_alisado:
 		await esperar_teclado("Alisar cueva: " + str(a + 1))
 		alisar_cueva()
+	
+	await esperar_teclado("Quitar columnas pequeñas.")
+	llena_area(0, 0, lleno, lleno_procesar)
+	quitar_artefactos(lleno, lleno_procesar, vacio, umbral_derribar, true)
+
+	await esperar_teclado("Llenar huecos pequeños.")
+	contar_cavidades()
+	if cavidades > 1:
+		quitar_artefactos(vacio, vacio_procesar, lleno, umbral_rellenar, false, cavidades)
+		llena_area(0, 0, lleno_procesar, lleno)
 	
 	dibujar_cueva(cueva)
 	
@@ -169,5 +190,60 @@ func copiar_matriz(origen: = cueva, destino: = pivote) -> void:
 	for x in range(ancho):
 		for y in range(alto):
 			destino[x][y] = origen[x][y]
+
+func contar_cavidades() -> void:
+	cavidades = 0
+	for x in range(ancho):
+		for y in range(alto):
+			if cueva[x][y] == vacio:
+				cavidades += 1
+				llena_area(x,y,vacio, vacio_procesar)
+	for x in range(ancho):
+			for y in range(alto):
+				if cueva[x][y] == vacio_procesar:
+					cueva[x][y] = vacio
+
+func quitar_artefactos(original: int, puente: int, destino: int, umbral: int, ilimitado: bool = true, limite: int = 1) -> void:
+	var conteo: int = limite
+	for x_ini in range(ancho):
+		for y_ini in range(alto):
+			if cueva[x_ini][y_ini] == original and (conteo > 1 or ilimitado):
+				llena_area(x_ini, y_ini, original, puente)
+				if area.size() <= umbral:
+					conteo -= 1
+					for cambiar: Vector2i in area:
+						cueva[cambiar.x][cambiar.y] = destino
+	# Este ciclo for se pone fuera del ciclo principal para evitar que convierta a "original" un área antes de tiempo.
+	for x in range(ancho):
+		for y in range(alto):
+			if cueva[x][y] == puente:
+				cueva[x][y] = original
+
+func llena_area(x_ini: int, y_ini: int, buscar: int, convertir: int, matriz: = cueva) -> void:
+
+	area.clear()
+	area.append(Vector2i(x_ini,y_ini))
+
+	area_temporal.clear()
+	area_temporal.append(Vector2i(x_ini,y_ini))
+
+	while area_temporal.size() > 0:
+		var x:int = area_temporal[0].x
+		var y:int = area_temporal[0].y
+		matriz[x][y] = convertir
+		area_temporal.pop_front()
+		if x < ancho - 1 and matriz[x+1][y] == buscar and not area_temporal.has(Vector2i(x+1,y)):
+			area_temporal.append(Vector2i(x+1,y))
+			area.append(Vector2i(x+1,y))
+		if x > 0 and matriz[x-1][y] == buscar and not area_temporal.has(Vector2i(x-1,y)):
+			area_temporal.append(Vector2i(x-1,y))
+			area.append(Vector2i(x-1,y))
+		if y < alto - 1 and matriz[x][y+1] == buscar and not area_temporal.has(Vector2i(x,y+1)):
+			area_temporal.append(Vector2i(x,y+1))
+			area.append(Vector2i(x,y+1))
+		if y > 0 and matriz[x][y-1] == buscar and not area_temporal.has(Vector2i(x,y-1)):
+			area_temporal.append(Vector2i(x,y-1))
+			area.append(Vector2i(x,y-1))
+
 
 #endregion - Funciones subordinadas y de apoyo
